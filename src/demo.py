@@ -7,8 +7,8 @@ Run this to see a quick demo without going through the full menu system
 import sys
 from pathlib import Path
 
-# Add src directory to Python path
-project_root = Path(__file__).parent
+# Add project root directory to Python path
+project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from rich.console import Console
@@ -79,7 +79,7 @@ def demo_quiz():
     quiz_display.show_quiz_results(results)
     
     console.print("\n[bold cyan]데모 완료![/bold cyan]")
-    console.print("전체 앱을 사용하려면 'python run.py' 또는 'make run'을 실행하세요.")
+    console.print("전체 앱을 사용하려면 'python src/run.py' 또는 'make run'을 실행하세요.")
 
 if __name__ == "__main__":
     try:

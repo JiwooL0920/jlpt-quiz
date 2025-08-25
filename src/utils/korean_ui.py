@@ -26,7 +26,7 @@ UI_TEXT = {
     'study_mode': {
         'title': '학습 선택',
         'vocabulary': '어휘 (단어) 퀴즈 | Vocabulary Quiz',
-        'grammar': '문법 퀴즈 | Grammar Quiz', 
+        'grammar': '독해 퀴즈 | Reading Comprehension Quiz', 
         'mixed': '혼합 퀴즈 | Mixed Quiz',
         'back': '뒤로 | Back'
     },
@@ -74,7 +74,7 @@ UI_TEXT = {
         'total_time': '소요시간:',
         'category_breakdown': '분야별 점수:',
         'vocabulary': '어휘 (단어):',
-        'grammar': '문법:',
+        'grammar': '독해:',
         'weak_areas': '개선이 필요한 분야:',
         'recommendations': '학습 권장사항:',
         'excellent': '우수',

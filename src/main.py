@@ -79,7 +79,7 @@ def validate_data(level: str):
                     console.print(f"  - {issue}")
             
             if issues['grammar']:
-                console.print("\n[bold]문법 데이터 문제:[/bold]")
+                console.print("\n[bold]독해 데이터 문제:[/bold]")
                 for issue in issues['grammar']:
                     console.print(f"  - {issue}")
         
@@ -89,7 +89,7 @@ def validate_data(level: str):
             vocab_count = csv_loader.get_vocabulary_count(level)
             grammar_count = csv_loader.get_grammar_count(level)
             console.print(f"어휘 문제: {vocab_count}개")
-            console.print(f"문법 문제: {grammar_count}개")
+            console.print(f"독해 문제: {grammar_count}개")
             console.print(f"총 문제: {vocab_count + grammar_count}개")
         except Exception as e:
             console.print(f"[red]통계 정보를 가져올 수 없습니다: {str(e)}[/red]")

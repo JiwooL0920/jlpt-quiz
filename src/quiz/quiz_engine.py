@@ -82,9 +82,14 @@ class QuizEngine:
         return questions
     
     def _prepare_grammar_questions(self, grammar_data: List[Dict], show_hiragana: bool) -> List[Dict]:
-        """Prepare grammar questions from data"""
+        """Prepare grammar questions from data (only reading comprehension types)"""
         questions = []
         for item in grammar_data:
+            # Skip sentence completion (fill-in-the-blank) questions
+            question_type = item.get('question_type', '')
+            if question_type == 'sentence_completion':
+                continue  # Skip fill-in-the-blank questions
+                
             try:
                 question = self.question_generator.generate_grammar_question(item, show_hiragana)
                 questions.append(question)

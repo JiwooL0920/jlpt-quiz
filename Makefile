@@ -32,7 +32,7 @@ run: ## 🚀 Run the JLPT quiz application
 		exit 1; \
 	fi
 	@echo "🎌 JLPT 학습 퀴즈를 시작합니다..."
-	venv/bin/python run.py
+	venv/bin/python src/run.py
 
 demo: ## 🎯 Run a quick quiz demo (3 vocabulary questions)
 	@if [ ! -d "venv" ]; then \
@@ -40,7 +40,7 @@ demo: ## 🎯 Run a quick quiz demo (3 vocabulary questions)
 		exit 1; \
 	fi
 	@echo "🎌 JLPT 퀴즈 데모를 시작합니다..."
-	venv/bin/python demo.py
+	venv/bin/python src/demo.py
 
 validate: ## ✅ Validate data integrity for specified level (default: N4)
 	@if [ ! -d "venv" ]; then \
