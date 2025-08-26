@@ -85,6 +85,19 @@ class QuizDisplay:
         content.append(f"{get_text('feedback', 'explanation')}\n", style="bold")
         content.append(f"{feedback['explanation']}\n\n")
         
+        # For vocabulary and grammar questions, show translations for all options
+        if feedback.get('option_translations'):
+            if feedback.get('question_type') == 'vocabulary':
+                content.append("모든 선택지 번역:\n", style="bold dim")
+            elif feedback.get('question_type') == 'grammar':
+                content.append("모든 선택지 원문:\n", style="bold dim")
+            else:
+                content.append("모든 선택지 번역:\n", style="bold dim")
+                
+            for translation in feedback['option_translations']:
+                content.append(f"  • {translation}\n", style="dim")
+            content.append("\n")
+        
         # Show continue prompt
         if feedback['question_number'] < feedback['total_questions']:
             continue_text = get_text('feedback', 'continue')

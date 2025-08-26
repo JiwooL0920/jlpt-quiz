@@ -55,7 +55,8 @@ class QuizEngine:
             
             # Select questions
             if question_count == -1:  # All questions
-                self.questions = question_pool
+                self.questions = question_pool.copy()  # Create a copy to avoid modifying the original
+                random.shuffle(self.questions)  # Randomize the order
             else:
                 self.questions = random.sample(question_pool, min(question_count, len(question_pool)))
             
@@ -144,7 +145,10 @@ class QuizEngine:
             'correct_answer': current_question['options'][correct_answer_index],
             'explanation': current_question['explanation'],
             'question_number': self.current_question_index + 1,
-            'total_questions': len(self.questions)
+            'total_questions': len(self.questions),
+            'question_type': current_question.get('type', ''),
+            'question_category': current_question.get('category', ''),
+            'option_translations': current_question.get('option_translations', [])
         }
         
         return feedback

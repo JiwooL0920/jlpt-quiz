@@ -832,6 +832,26 @@ class QuestionGenerator:
         else:
             display_text = kanji
             
+        # For reading questions, get Korean meanings for each hiragana option
+        option_translations = []
+        all_vocab = self.csv_loader.load_vocabulary('N4')
+        
+        # First pass: collect all translation data
+        translation_data = []
+        for option in options:
+            # Find the Korean meaning for this hiragana reading
+            for vocab_item_lookup in all_vocab:
+                if vocab_item_lookup['hiragana'] == option:
+                    # Format as: kanji (hiragana) - korean
+                    translation_data.append((vocab_item_lookup['kanji'], option, vocab_item_lookup['korean_meaning']))
+                    break
+            else:
+                # Fallback if not found
+                translation_data.append(('', option, ''))
+        
+        # Second pass: format with proper alignment
+        option_translations = self._format_aligned_translations(translation_data)
+
         return {
             'id': f"vocab_reading_{hash(str(vocab_item))}",
             'type': 'vocabulary',
@@ -844,7 +864,8 @@ class QuestionGenerator:
             'correct_answer': correct_index,
             'explanation': f"{kanji}({correct_answer})는 '{vocab_item['korean_meaning']}'을(를) 의미합니다.",
             'korean_meaning': vocab_item['korean_meaning'],
-            'show_hiragana': show_hiragana
+            'show_hiragana': show_hiragana,
+            'option_translations': option_translations  # Add translations for all options
         }
     
     def _align_kanji_hiragana_options(self, options_data: List[tuple]) -> List[str]:
@@ -872,6 +893,77 @@ class QuestionGenerator:
                 aligned_options.append(f"{formatted_kanji}({hiragana})")
         
         return aligned_options
+
+    def _get_display_width(self, text: str) -> int:
+        """Calculate the display width of text considering Japanese characters
+        
+        Japanese characters (kanji, hiragana, katakana) typically take 2 character widths
+        in monospace fonts, while ASCII characters take 1 character width.
+        """
+        if not text:
+            return 0
+            
+        width = 0
+        for char in text:
+            # Check if character is Japanese (kanji, hiragana, katakana)
+            if '\u3040' <= char <= '\u309F' or '\u30A0' <= char <= '\u30FF' or '\u4E00' <= char <= '\u9FAF':
+                width += 2  # Japanese characters are double-width
+            else:
+                width += 1  # ASCII and other characters are single-width
+        return width
+
+    def _format_aligned_translations(self, translation_data: List[tuple]) -> List[str]:
+        """Format vocabulary translations with proper column alignment
+        
+        Args:
+            translation_data: List of tuples [(kanji, hiragana, korean), ...]
+        
+        Returns:
+            List of formatted strings with aligned columns for kanji, hiragana, and korean
+        """
+        if not translation_data:
+            return []
+            
+        # Find maximum display widths for each column (with safety checks)
+        kanji_widths = [self._get_display_width(kanji) for kanji, _, _ in translation_data if kanji]
+        hiragana_widths = [self._get_display_width(hiragana) for _, hiragana, _ in translation_data if hiragana]
+        
+        max_kanji_display_width = max(kanji_widths) if kanji_widths else 0
+        max_hiragana_display_width = max(hiragana_widths) if hiragana_widths else 0
+        
+        # Format each translation with proper alignment
+        aligned_translations = []
+        for kanji, hiragana, korean in translation_data:
+            # Skip entries with critical missing data
+            if not kanji or not korean:
+                continue
+                
+            # Build the formatted string with proper spacing
+            if hiragana:
+                # Calculate spaces needed to align kanji column
+                kanji_display_width = self._get_display_width(kanji)
+                kanji_padding = max_kanji_display_width - kanji_display_width
+                
+                # Calculate spaces needed to align hiragana column  
+                hiragana_with_parens = f"({hiragana})"
+                hiragana_display_width = self._get_display_width(hiragana_with_parens)
+                hiragana_padding = max_hiragana_display_width + 2 - hiragana_display_width  # +2 for parentheses
+                
+                # Format: "kanji    (hiragana)    - korean"
+                kanji_part = kanji + " " * (kanji_padding + 4)  # +4 for base spacing
+                hiragana_part = hiragana_with_parens + " " * (hiragana_padding + 2)  # +2 for spacing before dash
+                formatted_line = f"{kanji_part}{hiragana_part}- {korean}"
+            else:
+                # Format: "kanji                  - korean" (no hiragana)
+                kanji_display_width = self._get_display_width(kanji)
+                kanji_padding = max_kanji_display_width - kanji_display_width
+                # Add spacing equivalent to hiragana column width + spacing
+                total_spacing = kanji_padding + 4 + max_hiragana_display_width + 2 + 2  # kanji_pad + base + hiragana + parens + pre_dash
+                formatted_line = f"{kanji}" + " " * total_spacing + f"- {korean}"
+            
+            aligned_translations.append(formatted_line)
+        
+        return aligned_translations
 
     def _generate_meaning_to_japanese_question(self, vocab_item: Dict, show_hiragana: bool) -> Dict:
         """Generate a meaning to Japanese question (Korean meaning -> Japanese)"""
@@ -908,6 +1000,40 @@ class QuestionGenerator:
         question_text = f"다음 뜻에 해당하는 일본어를 선택하세요:"
         display_text = korean_meaning
             
+        # For meaning-to-Japanese questions, generate translations for the actual Japanese options
+        option_translations = []
+        all_vocab = self.csv_loader.load_vocabulary('N4')
+        
+        # First pass: collect all translation data
+        translation_data = []
+        for option in options:
+            # Extract the kanji part from options like "食べる(たべる)" -> "食べる"
+            if '(' in option and ')' in option:
+                kanji_part = option.split('(')[0].strip()
+                # Extract hiragana from parentheses
+                hiragana_part = option.split('(')[1].split(')')[0].strip()
+            else:
+                kanji_part = option.strip()
+                hiragana_part = None
+                
+            # Find the Korean meaning for this Japanese term
+            for vocab_item_lookup in all_vocab:
+                if vocab_item_lookup['kanji'] == kanji_part:
+                    # Use the hiragana from the option if available, otherwise from lookup
+                    if hiragana_part:
+                        translation_data.append((kanji_part, hiragana_part, vocab_item_lookup['korean_meaning']))
+                    elif vocab_item_lookup.get('hiragana') and str(vocab_item_lookup['hiragana']).lower() != 'nan':
+                        translation_data.append((kanji_part, vocab_item_lookup['hiragana'], vocab_item_lookup['korean_meaning']))
+                    else:
+                        translation_data.append((kanji_part, '', vocab_item_lookup['korean_meaning']))
+                    break
+            else:
+                # Fallback if not found
+                translation_data.append((option, '', ''))
+        
+        # Second pass: format with proper alignment
+        option_translations = self._format_aligned_translations(translation_data)
+
         return {
             'id': f"vocab_meaning_to_jp_{hash(str(vocab_item))}",
             'type': 'vocabulary',
@@ -920,7 +1046,8 @@ class QuestionGenerator:
             'correct_answer': correct_index,
             'explanation': f"'{korean_meaning}'은(는) {vocab_item['kanji']}({vocab_item['hiragana']})입니다.",
             'korean_meaning': vocab_item['korean_meaning'],
-            'show_hiragana': show_hiragana
+            'show_hiragana': show_hiragana,
+            'option_translations': option_translations  # Add translations for all options
         }
     
     def _generate_japanese_to_meaning_question(self, vocab_item: Dict, show_hiragana: bool) -> Dict:
@@ -943,6 +1070,31 @@ class QuestionGenerator:
         options = self._create_options(correct_answer, wrong_answers)
         correct_index = options.index(correct_answer)
         
+        # For Japanese-to-meaning questions, get the Japanese terms for each Korean meaning option
+        # This will be used to show all translations in feedback
+        option_translations = []
+        all_vocab = self.csv_loader.load_vocabulary('N4')
+        
+        # First pass: collect all translation data
+        translation_data = []
+        for option in options:
+            # Find the Japanese term that corresponds to this Korean meaning
+            for vocab_item_lookup in all_vocab:
+                if vocab_item_lookup['korean_meaning'] == option:
+                    # Format as: kanji (hiragana) - korean
+                    hiragana_display = vocab_item_lookup.get('hiragana', '')
+                    if hiragana_display and str(hiragana_display).lower() != 'nan':
+                        translation_data.append((vocab_item_lookup['kanji'], hiragana_display, vocab_item_lookup['korean_meaning']))
+                    else:
+                        translation_data.append((vocab_item_lookup['kanji'], '', vocab_item_lookup['korean_meaning']))
+                    break
+            else:
+                # Fallback if not found
+                translation_data.append(('', '', option))
+        
+        # Second pass: format with proper alignment
+        option_translations = self._format_aligned_translations(translation_data)
+        
         question_text = f"다음 일본어의 한국어 뜻을 선택하세요:"
             
         return {
@@ -957,7 +1109,8 @@ class QuestionGenerator:
             'correct_answer': correct_index,
             'explanation': f"{vocab_item['kanji']}({vocab_item['hiragana']})는 '{correct_answer}'을(를) 의미합니다.",
             'korean_meaning': vocab_item['korean_meaning'],
-            'show_hiragana': show_hiragana
+            'show_hiragana': show_hiragana,
+            'option_translations': option_translations  # Add translations for all options
         }
     
     def _force_add_blanks_if_missing(self, sentence: str, pattern: str, hiragana: str = None) -> tuple:
@@ -1347,6 +1500,26 @@ class QuestionGenerator:
             display_text = f"{sentence}\n({hiragana_reading})"
         else:
             display_text = sentence
+        
+        # For reading comprehension questions, get the Japanese sentences for each Korean translation option
+        option_translations = []
+        all_grammar = self.csv_loader.load_grammar('N4')
+        
+        for option in options:
+            # Find the Japanese sentence that corresponds to this Korean translation
+            for grammar_item_lookup in all_grammar:
+                if grammar_item_lookup['korean_translation'] == option:
+                    japanese_sentence = grammar_item_lookup['japanese_sentence']
+                    hiragana_reading_lookup = grammar_item_lookup.get('hiragana_reading', '')
+                    
+                    if show_hiragana and hiragana_reading_lookup:
+                        option_translations.append(f"{option} = {japanese_sentence} ({hiragana_reading_lookup})")
+                    else:
+                        option_translations.append(f"{option} = {japanese_sentence}")
+                    break
+            else:
+                # Fallback if not found
+                option_translations.append(option)
             
         return {
             'id': f"grammar_meaning_{hash(str(grammar_item))}",
@@ -1360,7 +1533,8 @@ class QuestionGenerator:
             'correct_answer': correct_index,
             'explanation': f"'{sentence}'는 '{correct_answer}'을(를) 의미합니다.",
             'korean_meaning': correct_answer,
-            'show_hiragana': show_hiragana
+            'show_hiragana': show_hiragana,
+            'option_translations': option_translations  # Add translations for all options
         }
     
     def _generate_pattern_identification_question(self, grammar_item: Dict, show_hiragana: bool) -> Dict:
