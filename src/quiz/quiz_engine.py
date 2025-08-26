@@ -85,10 +85,11 @@ class QuizEngine:
         """Prepare grammar questions from data (only reading comprehension types)"""
         questions = []
         for item in grammar_data:
-            # Skip sentence completion (fill-in-the-blank) questions
+            # Only allow meaning_comprehension questions for reading comprehension
+            # Skip sentence_completion AND pattern_identification (both show blanks)
             question_type = item.get('question_type', '')
-            if question_type == 'sentence_completion':
-                continue  # Skip fill-in-the-blank questions
+            if question_type != 'meaning_comprehension':
+                continue  # Skip any question type that's not meaning comprehension
                 
             try:
                 question = self.question_generator.generate_grammar_question(item, show_hiragana)

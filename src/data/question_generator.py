@@ -806,15 +806,13 @@ class QuestionGenerator:
         
         question_type = grammar_item['question_type']
         
-        # REMOVED: sentence_completion questions (fill-in-the-blank)
-        # Only keep meaning comprehension questions for reading comprehension
+        # ONLY ALLOW meaning_comprehension questions for reading comprehension
+        # Remove both sentence_completion AND pattern_identification (they both show blanks)
         if question_type == 'meaning_comprehension':
             return self._generate_meaning_comprehension_question(grammar_item, show_hiragana)
-        elif question_type == 'pattern_identification':
-            return self._generate_pattern_identification_question(grammar_item, show_hiragana)
         else:
-            # Skip sentence_completion and any other types
-            raise ValueError(f"Question type {question_type} is not supported (removed fill-in-the-blank questions)")
+            # Skip sentence_completion, pattern_identification, and any other types
+            raise ValueError(f"Question type {question_type} is not supported (only meaning comprehension allowed)")
     
     def _generate_reading_question(self, vocab_item: Dict, show_hiragana: bool) -> Dict:
         """Generate a reading question (kanji -> hiragana)"""
