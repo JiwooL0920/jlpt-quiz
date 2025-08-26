@@ -869,7 +869,7 @@ class QuestionGenerator:
         }
     
     def _align_kanji_hiragana_options(self, options_data: List[tuple]) -> List[str]:
-        """Align kanji-hiragana options with consistent parentheses positioning
+        """Align kanji-hiragana options with consistent parentheses positioning using proper Japanese character display width
         
         Args:
             options_data: List of tuples [(kanji, hiragana), ...]
@@ -877,20 +877,26 @@ class QuestionGenerator:
         Returns:
             List of formatted strings with aligned parentheses
         """
-        # Find the longest kanji by character count
-        max_kanji_length = max(len(kanji) for kanji, _ in options_data)
+        if not options_data:
+            return []
+            
+        # Find the maximum display width for kanji column (with safety check)
+        kanji_widths = [self._get_display_width(kanji) for kanji, _ in options_data if kanji]
+        max_kanji_display_width = max(kanji_widths) if kanji_widths else 0
         
-        # Use fixed-width formatting approach
+        # Format each option with proper alignment
         aligned_options = []
         for kanji, hiragana in options_data:
-            if not hiragana:  # Handle empty hiragana
+            if not hiragana or hiragana.strip() == '':  # Handle empty hiragana
                 aligned_options.append(kanji)
             else:
-                # Use string formatting with left-align and fixed width
-                # Add 2 extra positions for spacing buffer
-                width = max_kanji_length + 2
-                formatted_kanji = f"{kanji:<{width}}"
-                aligned_options.append(f"{formatted_kanji}({hiragana})")
+                # Calculate spaces needed to align kanji column
+                kanji_display_width = self._get_display_width(kanji)
+                kanji_padding = max_kanji_display_width - kanji_display_width
+                
+                # Format: "kanji  (hiragana)" with proper spacing
+                kanji_part = kanji + " " * (kanji_padding + 2)  # +2 for base spacing
+                aligned_options.append(f"{kanji_part}({hiragana})")
         
         return aligned_options
 
@@ -938,7 +944,7 @@ class QuestionGenerator:
             if not kanji or not korean:
                 continue
                 
-            # Build the formatted string with proper spacing
+            # Build the formatted string with proper spacing (no dash, even spacing)
             if hiragana:
                 # Calculate spaces needed to align kanji column
                 kanji_display_width = self._get_display_width(kanji)
@@ -949,21 +955,61 @@ class QuestionGenerator:
                 hiragana_display_width = self._get_display_width(hiragana_with_parens)
                 hiragana_padding = max_hiragana_display_width + 2 - hiragana_display_width  # +2 for parentheses
                 
-                # Format: "kanji    (hiragana)    - korean"
+                # Format: "kanji    (hiragana)    korean" (no dash, even spacing)
                 kanji_part = kanji + " " * (kanji_padding + 4)  # +4 for base spacing
-                hiragana_part = hiragana_with_parens + " " * (hiragana_padding + 2)  # +2 for spacing before dash
-                formatted_line = f"{kanji_part}{hiragana_part}- {korean}"
+                hiragana_part = hiragana_with_parens + " " * (hiragana_padding + 4)  # +4 for spacing before korean
+                formatted_line = f"{kanji_part}{hiragana_part}{korean}"
             else:
-                # Format: "kanji                  - korean" (no hiragana)
+                # Format: "kanji                  korean" (no hiragana, no dash)
                 kanji_display_width = self._get_display_width(kanji)
                 kanji_padding = max_kanji_display_width - kanji_display_width
                 # Add spacing equivalent to hiragana column width + spacing
-                total_spacing = kanji_padding + 4 + max_hiragana_display_width + 2 + 2  # kanji_pad + base + hiragana + parens + pre_dash
-                formatted_line = f"{kanji}" + " " * total_spacing + f"- {korean}"
+                total_spacing = kanji_padding + 4 + max_hiragana_display_width + 2 + 4  # kanji_pad + base + hiragana + parens + korean_spacing
+                formatted_line = f"{kanji}" + " " * total_spacing + f"{korean}"
             
             aligned_translations.append(formatted_line)
         
         return aligned_translations
+
+    def _format_reading_comprehension_translations(self, translation_data: List[tuple]) -> List[str]:
+        """Format reading comprehension translations with 3-line layout per option
+        
+        Args:
+            translation_data: List of tuples [(korean_translation, japanese_sentence, hiragana_reading), ...]
+        
+        Returns:
+            List of formatted strings with 3-line layout:
+            • japanese_sentence
+              hiragana_reading
+              korean_translation
+        """
+        if not translation_data:
+            return []
+            
+        formatted_translations = []
+        for korean_translation, japanese_sentence, hiragana_reading in translation_data:
+            if not korean_translation or not japanese_sentence:
+                continue
+                
+            # Format each option as 3 lines:
+            # Line 1: • japanese_sentence  
+            # Line 2:     hiragana_reading (indented to align under japanese text, not bullet)
+            # Line 3:     korean_translation (same indentation as hiragana)
+            
+            lines = []
+            lines.append(f"• {japanese_sentence}")
+            
+            if hiragana_reading and hiragana_reading.strip():
+                lines.append(f"    {hiragana_reading}")  # 4 spaces to align under japanese text
+            else:
+                lines.append("    ")  # Empty line to maintain spacing
+                
+            lines.append(f"    {korean_translation}")  # 4 spaces to match hiragana indentation
+            
+            # Join the 3 lines for this option
+            formatted_translations.append("\n".join(lines))
+        
+        return formatted_translations
 
     def _generate_meaning_to_japanese_question(self, vocab_item: Dict, show_hiragana: bool) -> Dict:
         """Generate a meaning to Japanese question (Korean meaning -> Japanese)"""
@@ -1505,6 +1551,8 @@ class QuestionGenerator:
         option_translations = []
         all_grammar = self.csv_loader.load_grammar('N4')
         
+        # First pass: collect all translation data
+        translation_data = []
         for option in options:
             # Find the Japanese sentence that corresponds to this Korean translation
             for grammar_item_lookup in all_grammar:
@@ -1512,14 +1560,15 @@ class QuestionGenerator:
                     japanese_sentence = grammar_item_lookup['japanese_sentence']
                     hiragana_reading_lookup = grammar_item_lookup.get('hiragana_reading', '')
                     
-                    if show_hiragana and hiragana_reading_lookup:
-                        option_translations.append(f"{option} = {japanese_sentence} ({hiragana_reading_lookup})")
-                    else:
-                        option_translations.append(f"{option} = {japanese_sentence}")
+                    # Store data as tuple: (korean_translation, japanese_sentence, hiragana_reading)
+                    translation_data.append((option, japanese_sentence, hiragana_reading_lookup))
                     break
             else:
-                # Fallback if not found
-                option_translations.append(option)
+                # Fallback if not found - skip this option
+                translation_data.append((option, '', ''))
+        
+        # Second pass: format with 3-line layout
+        option_translations = self._format_reading_comprehension_translations(translation_data)
             
         return {
             'id': f"grammar_meaning_{hash(str(grammar_item))}",

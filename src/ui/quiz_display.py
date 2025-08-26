@@ -95,7 +95,15 @@ class QuizDisplay:
                 content.append("모든 선택지 번역:\n", style="bold dim")
                 
             for translation in feedback['option_translations']:
-                content.append(f"  • {translation}\n", style="dim")
+                # Check if translation already starts with bullet point (reading comprehension format)
+                if translation.startswith('•'):
+                    # Reading comprehension format: already has bullet points, just add indentation
+                    content.append(f"  {translation}\n", style="dim")
+                    # Add extra spacing between reading comprehension options
+                    content.append("\n")
+                else:
+                    # Vocabulary format: add bullet points
+                    content.append(f"  • {translation}\n", style="dim")
             content.append("\n")
         
         # Show continue prompt
