@@ -46,7 +46,16 @@ class QuizDisplay:
         
         # Display options
         for i, option in enumerate(question['options'], 1):
-            content.append(f"{i}. {option}\n")
+            if '\n' in option:
+                # Multi-line option (Korean->Japanese with hiragana)
+                lines = option.split('\n')
+                content.append(f"{i}. {lines[0]}\n")  # First line: number + sentence
+                for line in lines[1:]:
+                    content.append(f"   {line}\n")    # Additional lines: indented
+                content.append("\n")  # Extra space between options
+            else:
+                # Single-line option (standard format)
+                content.append(f"{i}. {option}\n")
         
         # Show the panel
         self.console.print(Panel(

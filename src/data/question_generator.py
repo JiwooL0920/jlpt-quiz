@@ -1527,7 +1527,21 @@ class QuestionGenerator:
         }
     
     def _generate_meaning_comprehension_question(self, grammar_item: Dict, show_hiragana: bool) -> Dict:
-        """Generate a meaning comprehension question"""
+        """Generate a meaning comprehension question - randomly choose direction"""
+        import random
+        
+        # Randomly choose direction: 0 = Japanese->Korean, 1 = Korean->Japanese
+        direction = random.choice([0, 1])
+        
+        if direction == 0:
+            # Original direction: Japanese sentence -> Korean translation
+            return self._generate_japanese_to_korean_comprehension(grammar_item, show_hiragana)
+        else:
+            # Reverse direction: Korean translation -> Japanese sentence  
+            return self._generate_korean_to_japanese_comprehension(grammar_item, show_hiragana)
+    
+    def _generate_japanese_to_korean_comprehension(self, grammar_item: Dict, show_hiragana: bool) -> Dict:
+        """Generate Japanese sentence -> Korean translation question"""
         sentence = grammar_item['japanese_sentence']
         correct_answer = grammar_item['korean_translation']
         
@@ -1547,7 +1561,7 @@ class QuestionGenerator:
         else:
             display_text = sentence
         
-        # For reading comprehension questions, get the Japanese sentences for each Korean translation option
+        # For Japanese->Korean questions, get the Japanese sentences for each Korean translation option
         option_translations = []
         all_grammar = self.csv_loader.load_grammar('N4')
         
@@ -1571,9 +1585,9 @@ class QuestionGenerator:
         option_translations = self._format_reading_comprehension_translations(translation_data)
             
         return {
-            'id': f"grammar_meaning_{hash(str(grammar_item))}",
+            'id': f"grammar_jp_to_kr_{hash(str(grammar_item))}",
             'type': 'grammar',
-            'category': 'meaning_comprehension',
+            'category': 'japanese_to_korean_comprehension',
             'level': 'N4',
             'difficulty': grammar_item.get('difficulty', 1),
             'question_text': question_text,
@@ -1582,6 +1596,75 @@ class QuestionGenerator:
             'correct_answer': correct_index,
             'explanation': f"'{sentence}'는 '{correct_answer}'을(를) 의미합니다.",
             'korean_meaning': correct_answer,
+            'show_hiragana': show_hiragana,
+            'option_translations': option_translations  # Add translations for all options
+        }
+    
+    def _generate_korean_to_japanese_comprehension(self, grammar_item: Dict, show_hiragana: bool) -> Dict:
+        """Generate Korean translation -> Japanese sentence question"""
+        korean_translation = grammar_item['korean_translation']
+        correct_answer = grammar_item['japanese_sentence']
+        
+        # Get wrong Japanese sentences
+        wrong_answers = self._get_similar_japanese_sentences(grammar_item)
+        
+        # Create options - for Korean->Japanese, we need to format with hiragana if requested
+        if show_hiragana:
+            # Format options with both kanji and hiragana readings
+            options = self._create_korean_to_japanese_options_with_hiragana(correct_answer, wrong_answers)
+        else:
+            # Standard options without hiragana
+            options = self._create_options(correct_answer, wrong_answers)
+        
+        correct_index = self._find_correct_answer_index(options, correct_answer, show_hiragana)
+        
+        question_text = f"다음 한국어 뜻에 해당하는 일본어 문장을 선택하세요:"
+        display_text = korean_translation
+        
+        # For Korean->Japanese questions, get the Korean translations for each Japanese sentence option
+        option_translations = []
+        all_grammar = self.csv_loader.load_grammar('N4')
+        
+        # First pass: collect all translation data for reverse direction
+        translation_data = []
+        for option in options:
+            # Extract the actual Japanese sentence from the formatted option
+            if '\n' in option:
+                # Multi-line format: extract first line (the actual sentence)
+                japanese_sentence = option.split('\n')[0]
+            else:
+                # Single-line format: use as is
+                japanese_sentence = option
+                
+            # Find the Korean translation that corresponds to this Japanese sentence
+            for grammar_item_lookup in all_grammar:
+                if grammar_item_lookup['japanese_sentence'] == japanese_sentence:
+                    korean_translation_lookup = grammar_item_lookup['korean_translation']
+                    hiragana_reading_lookup = grammar_item_lookup.get('hiragana_reading', '')
+                    
+                    # Store data as tuple: (korean_translation, japanese_sentence, hiragana_reading)
+                    # Note: For reverse direction, we show Korean->Japanese->Hiragana in the feedback
+                    translation_data.append((korean_translation_lookup, japanese_sentence, hiragana_reading_lookup))
+                    break
+            else:
+                # Fallback if not found - skip this option
+                translation_data.append(('', japanese_sentence, ''))
+        
+        # Second pass: format with 3-line layout (Korean->Japanese->Hiragana)
+        option_translations = self._format_reading_comprehension_translations(translation_data)
+            
+        return {
+            'id': f"grammar_kr_to_jp_{hash(str(grammar_item))}",
+            'type': 'grammar', 
+            'category': 'korean_to_japanese_comprehension',
+            'level': 'N4',
+            'difficulty': grammar_item.get('difficulty', 1),
+            'question_text': question_text,
+            'display_text': display_text,
+            'options': options,
+            'correct_answer': correct_index,
+            'explanation': f"'{korean_translation}'는 '{correct_answer}'을(를) 의미합니다.",
+            'korean_meaning': korean_translation,
             'show_hiragana': show_hiragana,
             'option_translations': option_translations  # Add translations for all options
         }
@@ -1764,6 +1847,66 @@ class QuestionGenerator:
                 '학교에 갔습니다.',
                 '음식을 먹었습니다.'
             ]
+    
+    def _get_similar_japanese_sentences(self, grammar_item: Dict) -> List[str]:
+        """Get similar Japanese sentences for wrong options in Korean->Japanese questions"""
+        try:
+            all_grammar = self.csv_loader.load_grammar('N4')
+            different_sentences = [
+                item['japanese_sentence'] for item in all_grammar 
+                if item['japanese_sentence'] != grammar_item['japanese_sentence']
+            ]
+            
+            return random.sample(different_sentences, min(3, len(different_sentences)))
+        except Exception:
+            # Fallback Japanese sentences
+            return [
+                '友達と映画を見ました。',
+                '毎日日本語を勉強します。',
+                '明日は雨が降るでしょう。',
+                'この本はとても面白いです。'
+            ]
+    
+    def _create_korean_to_japanese_options_with_hiragana(self, correct_answer: str, wrong_answers: List[str]) -> List[str]:
+        """Create options for Korean->Japanese questions with hiragana readings"""
+        all_sentences = [correct_answer] + wrong_answers[:3]  # Ensure we have 4 total
+        all_grammar = self.csv_loader.load_grammar('N4')
+        
+        formatted_options = []
+        for sentence in all_sentences:
+            # Find hiragana reading for this sentence
+            hiragana_reading = ''
+            for item in all_grammar:
+                if item['japanese_sentence'] == sentence:
+                    hiragana_reading = item.get('hiragana_reading', '')
+                    break
+            
+            # Format as: sentence + newline + hiragana (if available)
+            if hiragana_reading:
+                formatted_option = f"{sentence}\n{hiragana_reading}"
+            else:
+                formatted_option = sentence
+                
+            formatted_options.append(formatted_option)
+        
+        # Shuffle the options
+        import random
+        random.shuffle(formatted_options)
+        return formatted_options
+    
+    def _find_correct_answer_index(self, options: List[str], correct_answer: str, show_hiragana: bool) -> int:
+        """Find the index of the correct answer in formatted options"""
+        for i, option in enumerate(options):
+            if '\n' in option:
+                # Multi-line format: check if the first line matches
+                option_sentence = option.split('\n')[0]
+                if option_sentence == correct_answer:
+                    return i
+            else:
+                # Single-line format: direct comparison
+                if option == correct_answer:
+                    return i
+        return 0  # Fallback
     
     def _create_options(self, correct_answer: str, wrong_answers: List[str]) -> List[str]:
         """Create shuffled multiple choice options"""
