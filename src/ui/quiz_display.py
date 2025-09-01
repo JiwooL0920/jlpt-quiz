@@ -5,6 +5,7 @@ from rich.panel import Panel
 from rich.prompt import IntPrompt
 from rich.text import Text
 from rich.table import Table
+from rich.align import Align
 from typing import Dict, Optional
 import time
 
@@ -59,7 +60,7 @@ class QuizDisplay:
         
         # Show the panel
         self.console.print(Panel(
-            content,
+            Align.center(content),
             title=f"[bold]{header_text}[/bold]",
             border_style="cyan"
         ))
@@ -88,8 +89,41 @@ class QuizDisplay:
         
         # Create feedback content
         content = Text()
-        content.append(f"{get_text('feedback', 'your_answer')} {feedback['submitted_answer']}\n")
-        content.append(f"{get_text('feedback', 'correct_answer')} {feedback['correct_answer']}\n\n")
+        
+        # Helper function to check if text contains both kanji and hiragana
+        def has_kanji_and_hiragana(text):
+            has_kanji = any('\u4e00' <= char <= '\u9faf' for char in text)
+            has_hiragana = any('\u3040' <= char <= '\u309f' for char in text)
+            return has_kanji and has_hiragana
+        
+        # Format answers based on content and question type
+        if feedback.get('question_type') == 'vocabulary':
+            # Vocabulary: always same line format
+            content.append(f"{get_text('feedback', 'your_answer')} {feedback['submitted_answer']}\n")
+            content.append(f"{get_text('feedback', 'correct_answer')} {feedback['correct_answer']}\n\n")
+        else:
+            # Reading comprehension: newlines only for kanji+hiragana combinations
+            submitted_multiline = has_kanji_and_hiragana(feedback['submitted_answer'])
+            correct_multiline = has_kanji_and_hiragana(feedback['correct_answer'])
+            
+            # Check if both answers are Korean (no kanji+hiragana)  
+            both_korean = not submitted_multiline and not correct_multiline
+            
+            if both_korean:
+                # Both Korean: keep on same lines with no spacing between
+                content.append(f"{get_text('feedback', 'your_answer')} {feedback['submitted_answer']}\n")
+                content.append(f"{get_text('feedback', 'correct_answer')} {feedback['correct_answer']}\n\n")
+            else:
+                # At least one has kanji+hiragana: use multiline format with spacing
+                if submitted_multiline:
+                    content.append(f"{get_text('feedback', 'your_answer')}\n{feedback['submitted_answer']}\n\n")
+                else:
+                    content.append(f"{get_text('feedback', 'your_answer')} {feedback['submitted_answer']}\n\n")
+                    
+                if correct_multiline:
+                    content.append(f"{get_text('feedback', 'correct_answer')}\n{feedback['correct_answer']}\n\n")
+                else:
+                    content.append(f"{get_text('feedback', 'correct_answer')} {feedback['correct_answer']}\n\n")
         
         content.append(f"{get_text('feedback', 'explanation')}\n", style="bold")
         content.append(f"{feedback['explanation']}\n\n")
@@ -124,7 +158,7 @@ class QuizDisplay:
         content.append(continue_text, style="dim")
         
         self.console.print(Panel(
-            content,
+            Align.center(content),
             title=title,
             border_style=border_style
         ))
@@ -140,7 +174,7 @@ class QuizDisplay:
         self.console.clear()
         
         self.console.print(Panel(
-            "[bold]전체 문제 답안[/bold]",
+            Align.center("[bold]전체 문제 답안[/bold]"),
             border_style="cyan"
         ))
         
@@ -222,7 +256,7 @@ class QuizDisplay:
         
         # Show results panel
         self.console.print(Panel(
-            content,
+            Align.center(content),
             title=f"[bold]{get_text('results', 'title')} - {grade_text}[/bold]",
             border_style=grade_color
         ))

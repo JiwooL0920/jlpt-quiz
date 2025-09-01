@@ -5,10 +5,12 @@ from rich.panel import Panel
 from rich.prompt import IntPrompt, Confirm
 from rich.table import Table
 from rich.text import Text
+from rich.align import Align
 from typing import Optional
 import sys
 
 from ..utils.korean_ui import UI_TEXT, get_text
+from ..utils.settings import Settings
 from ..data.csv_loader import CSVLoader
 from ..quiz.quiz_engine import QuizEngine
 from .quiz_display import QuizDisplay
@@ -18,43 +20,70 @@ class MainMenu:
     
     def __init__(self, console: Console):
         self.console = console
+        self.settings = Settings()
         self.csv_loader = CSVLoader()
         self.quiz_engine = QuizEngine()
         self.quiz_display = QuizDisplay(console)
         
+        # Navigation stack for proper back/forth navigation
+        self.navigation_stack = []
+        
     def run(self):
         """Run the main menu loop"""
         while True:
-            self.display_main_menu()
-            choice = self.get_menu_choice()
+            self.display_landing_page()
+            choice = self.get_landing_choice()
             
             if choice == 1:
-                self.level_selection()
+                self.vocabulary_quiz_selection()
             elif choice == 2:
-                self.show_previous_results()
+                self.reading_comprehension_selection()
             elif choice == 3:
                 self.show_settings()
             elif choice == 4:
-                self.console.print(f"[yellow]{get_text('common', 'success')}! 다음에 또 만나요![/yellow]")
+                self.console.print(f"[yellow]안녕히 가세요![/yellow]")
                 break
     
-    def display_main_menu(self):
-        """Display the main menu"""
+    def display_landing_page(self):
+        """Display the new JLPT landing page with ASCII art"""
         self.console.clear()
         
-        # Create menu content
-        content = f"""[bold cyan]{get_text('main_menu', 'title')}[/bold cyan]
-[dim]{get_text('main_menu', 'subtitle')}[/dim]
-
-[1] {get_text('main_menu', 'level_select')}
-[2] {get_text('main_menu', 'previous_results')}
-[3] {get_text('main_menu', 'settings')}
-[4] {get_text('main_menu', 'exit')}"""
+        # JLPT ASCII Art Logo
+        jlpt_logo = """[bold cyan]     ██╗██╗      ██████╗ ████████╗
+     ██║██║      ██╔══██╗╚══██╔══╝
+     ██║██║      ██████╔╝   ██║   
+██   ██║██║      ██╔═══╝    ██║   
+╚█████╔╝███████╗ ██║        ██║   
+ ╚════╝ ╚══════╝ ╚═╝        ╚═╝   [/bold cyan]
         
-        self.console.print(Panel(content, border_style="cyan"))
+[bold white]    Japanese Language Proficiency Test[/bold white]
+[dim cyan]         일본어능력시험 학습도구[/dim cyan]"""
+        
+        # Current settings display
+        current_level = self.settings.get_level()
+        hiragana_text = self.settings.get_hiragana_display_text()
+        feedback_text = self.settings.get_feedback_mode_text()
+        
+        settings_info = f"""
+[dim]현재 설정: {current_level} | {hiragana_text} | {feedback_text}[/dim]"""
+        
+        # Menu options
+        menu_options = """
+[1] 어휘 학습 (Vocabulary Quiz)
+[2] 독해 학습 (Reading Comprehension Quiz)  
+[3] 설정 (Settings)
+[4] 종료 (Exit)"""
+        
+        # Combine all content and center it
+        content = jlpt_logo + settings_info + menu_options
+        
+        self.console.print(Panel(
+            Align.center(content),
+            border_style="cyan"
+        ))
     
-    def get_menu_choice(self) -> int:
-        """Get user menu choice"""
+    def get_landing_choice(self) -> int:
+        """Get user choice from landing page"""
         try:
             choice = IntPrompt.ask(
                 f"\n[cyan]선택하세요[/cyan]", 
@@ -64,6 +93,78 @@ class MainMenu:
         except KeyboardInterrupt:
             self.console.print(f"\n[yellow]종료합니다...[/yellow]")
             sys.exit(0)
+    
+    def vocabulary_quiz_selection(self):
+        """Vocabulary quiz with question count selection only"""
+        self.console.clear()
+        
+        current_level = self.settings.get_level()
+        vocab_count = self.csv_loader.get_vocabulary_count(current_level)
+        
+        content = f"""[bold cyan]어휘 학습 - {current_level}[/bold cyan]
+[dim]총 {vocab_count}개의 어휘 문제 중에서 선택하세요[/dim]
+
+[1] 25문제
+[2] 50문제
+[3] 100문제
+[4] 전체 문제 ({vocab_count}개)
+
+[5] 뒤로 가기"""
+        
+        self.console.print(Panel(Align.center(content), border_style="cyan"))
+        
+        try:
+            choice = IntPrompt.ask("선택하세요", choices=["1", "2", "3", "4", "5"])
+            
+            if choice == 5:
+                return  # Back to main menu
+            
+            question_counts = [25, 50, 100, -1]  # -1 means all
+            question_count = question_counts[choice - 1]
+            
+            # Start vocabulary quiz with current settings
+            self.start_quiz(current_level, "vocabulary", question_count, 
+                          self.settings.get_feedback_mode(), 
+                          self.settings.get_hiragana_display())
+            
+        except KeyboardInterrupt:
+            return
+    
+    def reading_comprehension_selection(self):
+        """Reading comprehension quiz with question count selection only"""
+        self.console.clear()
+        
+        current_level = self.settings.get_level()
+        grammar_count = self.csv_loader.get_grammar_count(current_level)
+        
+        content = f"""[bold cyan]독해 학습 - {current_level}[/bold cyan]
+[dim]총 {grammar_count}개의 독해 문제 중에서 선택하세요[/dim]
+
+[1] 25문제
+[2] 50문제
+[3] 100문제
+[4] 전체 문제 ({grammar_count}개)
+
+[5] 뒤로 가기"""
+        
+        self.console.print(Panel(Align.center(content), border_style="cyan"))
+        
+        try:
+            choice = IntPrompt.ask("선택하세요", choices=["1", "2", "3", "4", "5"])
+            
+            if choice == 5:
+                return  # Back to main menu
+            
+            question_counts = [25, 50, 100, -1]  # -1 means all
+            question_count = question_counts[choice - 1]
+            
+            # Start reading comprehension quiz with current settings
+            self.start_quiz(current_level, "grammar", question_count, 
+                          self.settings.get_feedback_mode(), 
+                          self.settings.get_hiragana_display())
+            
+        except KeyboardInterrupt:
+            return
     
     def level_selection(self):
         """Display level selection menu"""
@@ -257,48 +358,157 @@ class MainMenu:
         # Show final results
         self.quiz_display.show_quiz_results(results)
     
-    def show_previous_results(self):
-        """Display previous quiz results"""
-        self.console.clear()
-        self.console.print(Panel(
-            f"[bold]{get_text('results', 'title')}[/bold]\n\n이전 결과가 없습니다.\n(구현 예정)",
-            border_style="cyan"
-        ))
-        self.console.input(f"\n[Enter]를 눌러 계속...")
-    
     def show_settings(self):
-        """Display settings menu"""
+        """Display settings menu with persistent preferences"""
+        while True:
+            self.console.clear()
+            
+            # Current settings
+            current_level = self.settings.get_level()
+            hiragana_text = self.settings.get_hiragana_display_text()
+            feedback_text = self.settings.get_feedback_mode_text()
+            
+            content = f"""[bold cyan]설정 (Settings)[/bold cyan]
+
+[bold]현재 설정:[/bold]
+• JLPT 레벨: [cyan]{current_level}[/cyan]
+• 히라가나 표시: [cyan]{hiragana_text}[/cyan]  
+• 피드백 모드: [cyan]{feedback_text}[/cyan]
+
+[bold]설정 변경:[/bold]
+[1] JLPT 레벨 변경
+[2] 히라가나 표시 설정
+[3] 피드백 모드 설정
+[4] 정보 (About)
+
+[5] 뒤로 가기"""
+            
+            self.console.print(Panel(Align.center(content), border_style="cyan"))
+            
+            try:
+                choice = IntPrompt.ask("선택하세요", choices=["1", "2", "3", "4", "5"])
+                
+                if choice == 1:
+                    self.change_level_setting()
+                elif choice == 2:
+                    self.change_hiragana_setting()
+                elif choice == 3:
+                    self.change_feedback_setting()
+                elif choice == 4:
+                    self.show_about()
+                    self.console.input(f"\n[Enter]를 눌러 계속...")
+                elif choice == 5:
+                    return
+                    
+            except KeyboardInterrupt:
+                return
+    
+    def change_level_setting(self):
+        """Change JLPT level setting"""
         self.console.clear()
         
-        content = f"""
-[1] {get_text('settings', 'clear_history')}
-[2] {get_text('settings', 'export_results')}
-[3] {get_text('settings', 'about')}
-
-[4] {get_text('settings', 'back')}
-        """
+        available_levels = self.csv_loader.get_available_levels()
+        current_level = self.settings.get_level()
         
-        self.console.print(Panel(
-            content.strip(),
-            title=f"[bold]{get_text('settings', 'title')}[/bold]",
-            border_style="cyan"
-        ))
+        content = "[bold cyan]JLPT 레벨 선택[/bold cyan]\n\n"
+        choices = []
+        
+        for i, level in enumerate(["N5", "N4", "N3", "N2", "N1"], 1):
+            is_available = level in available_levels
+            is_current = level == current_level
+            
+            if is_current:
+                status = " [cyan](현재 설정)[/cyan]"
+            elif is_available:
+                status = " [green](사용 가능)[/green]"
+            else:
+                status = " [dim](준비중)[/dim]"
+                
+            content += f"[{i}] {level}{status}\n"
+            choices.append(str(i))
+        
+        content += f"\n[{len(choices)+1}] 취소"
+        choices.append(str(len(choices)+1))
+        
+        self.console.print(Panel(Align.center(content), border_style="cyan"))
         
         try:
-            choice = IntPrompt.ask("선택하세요", choices=["1", "2", "3", "4"])
+            choice = IntPrompt.ask("선택하세요", choices=choices)
+            
+            if choice <= 5:  # Level selected
+                levels = ["N5", "N4", "N3", "N2", "N1"]
+                selected_level = levels[choice - 1]
+                
+                if selected_level in available_levels:
+                    self.settings.set_level(selected_level)
+                    self.console.print(f"[green]레벨이 {selected_level}로 설정되었습니다![/green]")
+                else:
+                    self.console.print(f"[yellow]{selected_level}는 아직 준비중입니다.[/yellow]")
+                
+                self.console.input("\n[Enter]를 눌러 계속...")
+                
+        except KeyboardInterrupt:
+            return
+    
+    def change_hiragana_setting(self):
+        """Change hiragana display setting"""
+        self.console.clear()
+        
+        current_setting = self.settings.get_hiragana_display()
+        
+        content = f"""[bold cyan]히라가나 표시 설정[/bold cyan]
+
+[1] 한자만 표시 {"[cyan](현재 설정)[/cyan]" if not current_setting else ""}
+[2] 한자 + 히라가나 표시 {"[cyan](현재 설정)[/cyan]" if current_setting else ""}
+
+[3] 취소"""
+        
+        self.console.print(Panel(Align.center(content), border_style="cyan"))
+        
+        try:
+            choice = IntPrompt.ask("선택하세요", choices=["1", "2", "3"])
             
             if choice == 1:
-                if Confirm.ask(get_text('settings', 'confirm_clear')):
-                    self.console.print(f"[green]{get_text('settings', 'history_cleared')}[/green]")
+                self.settings.set_hiragana_display(False)
+                self.console.print("[green]한자만 표시로 설정되었습니다![/green]")
+                self.console.input("\n[Enter]를 눌러 계속...")
             elif choice == 2:
-                self.console.print(f"[green]{get_text('settings', 'results_exported')} results.json[/green]")
-            elif choice == 3:
-                self.show_about()
-            elif choice == 4:
-                return
+                self.settings.set_hiragana_display(True)
+                self.console.print("[green]한자 + 히라가나 표시로 설정되었습니다![/green]")
+                self.console.input("\n[Enter]를 눌러 계속...")
                 
-            if choice != 4:
-                self.console.input(f"\n[Enter]를 눌러 계속...")
+        except KeyboardInterrupt:
+            return
+    
+    def change_feedback_setting(self):
+        """Change feedback mode setting"""
+        self.console.clear()
+        
+        current_mode = self.settings.get_feedback_mode()
+        
+        content = f"""[bold cyan]피드백 모드 설정[/bold cyan]
+
+[1] 즉시 피드백 {"[cyan](현재 설정)[/cyan]" if current_mode == "immediate" else ""}
+   (각 문제마다 바로 정답과 해설 표시)
+   
+[2] 마지막에 일괄 피드백 {"[cyan](현재 설정)[/cyan]" if current_mode == "deferred" else ""}
+   (모든 문제를 푼 후 한꺼번에 정답과 해설 표시)
+
+[3] 취소"""
+        
+        self.console.print(Panel(Align.center(content), border_style="cyan"))
+        
+        try:
+            choice = IntPrompt.ask("선택하세요", choices=["1", "2", "3"])
+            
+            if choice == 1:
+                self.settings.set_feedback_mode("immediate")
+                self.console.print("[green]즉시 피드백으로 설정되었습니다![/green]")
+                self.console.input("\n[Enter]를 눌러 계속...")
+            elif choice == 2:
+                self.settings.set_feedback_mode("deferred")
+                self.console.print("[green]마지막에 일괄 피드백으로 설정되었습니다![/green]")
+                self.console.input("\n[Enter]를 눌러 계속...")
                 
         except KeyboardInterrupt:
             return
@@ -319,4 +529,4 @@ class MainMenu:
 [bold]개발자:[/bold] JLPT Quiz Team
 [bold]라이센스:[/bold] MIT License"""
 
-        self.console.print(Panel(about_text, border_style="cyan"))
+        self.console.print(Panel(Align.center(about_text), border_style="cyan"))

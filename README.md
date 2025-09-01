@@ -3,23 +3,24 @@
 A terminal-based quiz application for Japanese Language Proficiency Test (JLPT) learning.
 
 ### Demo
+
 ![demo](https://github.com/user-attachments/assets/1257430d-5993-46f4-8cdc-8f7a1aed4e89)
 
-
 ### Vocabulary Quiz
-<img width="484" height="250" alt="Screenshot 2025-08-25 at 7 28 05 PM" src="https://github.com/user-attachments/assets/5c9f8568-1502-4aa6-8ed4-d9e59defd0c9" />    
 
-<img width="484" height="173" alt="Screenshot 2025-08-25 at 7 28 57 PM" src="https://github.com/user-attachments/assets/5ab9583b-f42d-491e-8cef-2ae166b94d71" />    
+<img width="484" height="250" alt="Screenshot 2025-08-25 at 7 28 05 PM" src="https://github.com/user-attachments/assets/5c9f8568-1502-4aa6-8ed4-d9e59defd0c9" />
 
-<img width="482" height="264" alt="Screenshot 2025-08-25 at 7 29 42 PM" src="https://github.com/user-attachments/assets/305aaa98-9a8e-4553-a613-1b932978f7d2" />    
+<img width="484" height="173" alt="Screenshot 2025-08-25 at 7 28 57 PM" src="https://github.com/user-attachments/assets/5ab9583b-f42d-491e-8cef-2ae166b94d71" />
 
-<img width="483" height="182" alt="Screenshot 2025-08-25 at 7 29 58 PM" src="https://github.com/user-attachments/assets/cbc443a1-b4e6-4398-b16e-0c0d50771b8b" />    
+<img width="482" height="264" alt="Screenshot 2025-08-25 at 7 29 42 PM" src="https://github.com/user-attachments/assets/305aaa98-9a8e-4553-a613-1b932978f7d2" />
+
+<img width="483" height="182" alt="Screenshot 2025-08-25 at 7 29 58 PM" src="https://github.com/user-attachments/assets/cbc443a1-b4e6-4398-b16e-0c0d50771b8b" />
 
 ### Reading Comprehension
-<img width="480" height="261" alt="Screenshot 2025-08-25 at 7 31 24 PM" src="https://github.com/user-attachments/assets/71946449-270e-43f1-b58b-314904115fc3" />    
 
-<img width="488" height="184" alt="Screenshot 2025-08-25 at 7 31 52 PM" src="https://github.com/user-attachments/assets/e54e8966-cced-4ae2-a462-e4e61f0373ce" />    
+<img width="480" height="261" alt="Screenshot 2025-08-25 at 7 31 24 PM" src="https://github.com/user-attachments/assets/71946449-270e-43f1-b58b-314904115fc3" />
 
+<img width="488" height="184" alt="Screenshot 2025-08-25 at 7 31 52 PM" src="https://github.com/user-attachments/assets/e54e8966-cced-4ae2-a462-e4e61f0373ce" />
 
 ## Key Features
 
@@ -32,6 +33,7 @@ A terminal-based quiz application for Japanese Language Proficiency Test (JLPT) 
 ## Installation and Usage
 
 ### Using Make (Recommended)
+
 ```bash
 # Install
 make setup
@@ -39,28 +41,33 @@ make setup
 # Run
 make run
 
-# Show help
+# Show Help
 make help
 ```
 
 ### Automated Installation Script
+
 ```bash
 ./scripts/install.sh
 ```
 
 ### Manual Installation
+
 1. Create and activate virtual environment:
+
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
 2. Install required packages:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 3. Run the application:
+
 ```bash
 python src/run.py
 ```
@@ -77,17 +84,17 @@ python src/demo.py
 
 ## Make Commands
 
-| Command | Description |
-|---------|-------------|
-| `make setup` | Set up virtual environment and install dependencies |
-| `make run` | Run the application |
-| `make demo` | Quick quiz demo (3 questions) |
-| `make validate` | Validate N4 data |
-| `make validate-all` | Validate all level data |
-| `make clean` | Clean temporary files |
-| `make clean-all` | Clean everything including virtual environment |
-| `make info` | Show project information |
-| `make help` | Show all commands |
+| Command             | Description                                         |
+| ------------------- | --------------------------------------------------- |
+| `make setup`        | Set up virtual environment and install dependencies |
+| `make run`          | Run the application                                 |
+| `make demo`         | Quick quiz demo (3 questions)                       |
+| `make validate`     | Validate N4 data                                    |
+| `make validate-all` | Validate all level data                             |
+| `make clean`        | Clean temporary files                               |
+| `make clean-all`    | Clean everything including virtual environment      |
+| `make info`         | Show project information                            |
+| `make help`         | Show all commands                                   |
 
 ## Data Validation
 

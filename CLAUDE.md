@@ -106,11 +106,15 @@ Comprehensive data integrity checking is built into CSVLoader:
 
 **Completed:**
 - ✅ Full N4 vocabulary and grammar quiz system
-- ✅ Korean UI with Rich library styling
+- ✅ Korean UI with Rich library styling and ASCII art landing page
 - ✅ Question generation with hiragana hiding for grammar patterns  
-- ✅ Score tracking and results analysis
+- ✅ Bidirectional reading comprehension (Japanese↔Korean) with randomization
+- ✅ Score tracking and results analysis with complete option translations
 - ✅ Data validation and integrity checking
 - ✅ Make-based development workflow
+- ✅ Persistent settings system (level, hiragana display, feedback mode)
+- ✅ Simplified navigation with proper back/forth functionality
+- ✅ Question randomization for all quiz modes
 
 **In Progress:**
 - Progress saving and session management

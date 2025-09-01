@@ -60,7 +60,7 @@ UI_TEXT = {
     'feedback': {
         'correct': '✓ 정답',
         'incorrect': '✗ 오답',
-        'your_answer': '선택한 답:',
+        'your_answer': '선택:',
         'correct_answer': '정답:',
         'explanation': '해설:',
         'continue': '[Enter] 다음 문제',

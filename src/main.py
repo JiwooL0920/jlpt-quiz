@@ -40,17 +40,7 @@ def main(validate, level):
         return
     
     try:
-        # Display welcome message
-        console.clear()
-        welcome_text = f"""[bold cyan]{get_text('main_menu', 'title')}[/bold cyan]
-[dim]{get_text('main_menu', 'subtitle')}[/dim]
-
-환영합니다! JLPT 학습을 시작해보세요."""
-
-        console.print(Panel(welcome_text, border_style="cyan"))
-        console.input("\n[Enter]를 눌러 시작...")
-        
-        # Initialize and run main menu
+        # Initialize and run main menu directly
         menu = MainMenu(console)
         menu.run()
         
